@@ -202,6 +202,20 @@ tailwind.config = {
     *{ animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important; }
   }
 
+  /* ===== MOBILE PERFORMANCE: kill expensive blur/canvas work on small screens ===== */
+  @media (max-width: 900px){
+    .glass, .glass-strong{
+      backdrop-filter:none !important;
+      -webkit-backdrop-filter:none !important;
+      background:rgba(11,17,32,0.94) !important;
+    }
+    .orb{ filter:blur(36px); opacity:.6; }
+    #bg-canvas{ display:none; }
+    .noise{ display:none; }
+    .grid-lines{ background-size:64px 64px; }
+    .animate-float, .animate-float-slow, .animate-glow-pulse{ animation:none !important; }
+  }
+
   a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible{
     outline:2px solid var(--sky-400); outline-offset:3px; border-radius:4px;
   }
@@ -913,6 +927,11 @@ tailwind.config = {
 
 <script>
 /* ============================================================
+   MOBILE PERF FLAG — used to skip heavy cursor/canvas/tilt work
+============================================================ */
+const isMobile = window.matchMedia('(max-width: 900px)').matches || window.innerWidth < 900;
+
+/* ============================================================
    DATA
 ============================================================ */
 const SKILLS = [
@@ -1059,23 +1078,25 @@ AOS.init({ duration:800, easing:'ease-out-cubic', once:true, offset:60 });
 /* ============================================================
    CUSTOM CURSOR
 ============================================================ */
-const dot = document.querySelector('.cursor-dot');
-const ring = document.querySelector('.cursor-ring');
-let mx=0,my=0, rx=0, ry=0;
-window.addEventListener('mousemove', (e) => {
-  mx = e.clientX; my = e.clientY;
-  dot.style.left = mx+'px'; dot.style.top = my+'px';
-});
-function animateRing(){
-  rx += (mx-rx)*0.16; ry += (my-ry)*0.16;
-  ring.style.left = rx+'px'; ring.style.top = ry+'px';
-  requestAnimationFrame(animateRing);
+if (!isMobile){
+  const dot = document.querySelector('.cursor-dot');
+  const ring = document.querySelector('.cursor-ring');
+  let mx=0,my=0, rx=0, ry=0;
+  window.addEventListener('mousemove', (e) => {
+    mx = e.clientX; my = e.clientY;
+    dot.style.left = mx+'px'; dot.style.top = my+'px';
+  });
+  function animateRing(){
+    rx += (mx-rx)*0.16; ry += (my-ry)*0.16;
+    ring.style.left = rx+'px'; ring.style.top = ry+'px';
+    requestAnimationFrame(animateRing);
+  }
+  animateRing();
+  document.querySelectorAll('a, button, [data-magnetic], input, textarea').forEach(el=>{
+    el.addEventListener('mouseenter', ()=>ring.classList.add('grow'));
+    el.addEventListener('mouseleave', ()=>ring.classList.remove('grow'));
+  });
 }
-animateRing();
-document.querySelectorAll('a, button, [data-magnetic], input, textarea').forEach(el=>{
-  el.addEventListener('mouseenter', ()=>ring.classList.add('grow'));
-  el.addEventListener('mouseleave', ()=>ring.classList.remove('grow'));
-});
 
 /* ============================================================
    MAGNETIC BUTTONS
@@ -1260,7 +1281,7 @@ function renderProjects(filter){
     `;
     projectGrid.appendChild(card);
   });
-  if (window.VanillaTilt){
+  if (window.VanillaTilt && !isMobile){
     VanillaTilt.init(projectGrid.querySelectorAll('.tilt-card'), { max:6, speed:400, glare:true, 'max-glare':0.12, scale:1.02 });
   }
   if (window.AOS) AOS.refreshHard();
@@ -1277,7 +1298,7 @@ document.querySelectorAll('.proj-filter-btn').forEach(btn=>{
 /* ============================================================
    HERO CARD TILT
 ============================================================ */
-if (window.VanillaTilt){
+if (window.VanillaTilt && !isMobile){
   VanillaTilt.init(document.getElementById('tiltCard'), { max:10, speed:400, glare:true, 'max-glare':0.15, scale:1.02 });
 }
 
@@ -1375,6 +1396,7 @@ backToTop.addEventListener('click', ()=>{
 /* ============================================================
    CANVAS BACKGROUND — PARTICLES + STARS + SHOOTING STARS + MOUSE TRAIL
 ============================================================ */
+if (!isMobile) {
 const bgCanvas = document.getElementById('bg-canvas');
 const bctx = bgCanvas.getContext('2d');
 let W, H;
@@ -1475,6 +1497,7 @@ function drawBg(){
   requestAnimationFrame(drawBg);
 }
 drawBg();
+} // end !isMobile canvas block
 </script>
 
 </body>
